@@ -226,6 +226,48 @@ impl Service {
 		})
 	}
 
+	pub async fn typing_users_for_user(
+		&self,
+		room_id: &RoomId,
+		sender_user: &UserId,
+	) -> Result<Vec<OwnedUserId>> {
+		let room_typing_indicators = self.typing.read().await.get(room_id).cloned();
+
+		let Some(typing_indicators) = room_typing_indicators else {
+			return Ok(Vec::new());
+		};
+
+		let user_ids: Vec<_> = typing_indicators
+			.into_keys()
+			.stream()
+			.filter_map(|typing_user_id| async move {
+				(!self
+					.services
+					.users
+					.user_is_ignored(&typing_user_id, sender_user)
+					.await)
+					.then_some(typing_user_id)
+			})
+			.collect()
+			.await;
+
+		Ok(user_ids)
+	}
+
+	pub async fn typings_event_for_user(
+		&self,
+		room_id: &RoomId,
+		sender_user: &UserId,
+	) -> Result<SyncEphemeralRoomEvent<ruma::events::typing::TypingEventContent>> {
+		Ok(SyncEphemeralRoomEvent {
+			content: ruma::events::typing::TypingEventContent {
+				user_ids: self
+					.typing_users_for_user(room_id, sender_user)
+					.await?,
+			},
+		})
+	}
+
 	async fn federation_send(
 		&self,
 		room_id: &RoomId,

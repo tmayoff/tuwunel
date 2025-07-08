@@ -152,6 +152,9 @@ pub(crate) async fn sync_events_v5_route(
 	let (account_data, e2ee, to_device, receipts) =
 		try_join4(account_data, e2ee, to_device, receipts).await?;
 
+	// let typing = collect_typing(services, &sender_user, &body,
+	// &todo_rooms).map(Ok);
+
 	let extensions = sync_events::v5::response::Extensions {
 		account_data,
 		e2ee,
@@ -959,6 +962,76 @@ async fn collect_to_device(
 			.collect()
 			.await,
 	})
+}
+
+async fn collect_typing_events(
+	services: &Services,
+	sender_user: &UserId,
+	body: &sync_events::v5::Request,
+	todo_rooms: &TodoRooms,
+) -> Result<sync_events::v5::response::Typing> {
+	if !body.extensions.typing.enabled.unwrap_or(false) {
+		return Ok(sync_events::v5::response::Typing::default());
+	}
+	let rooms: Vec<_> = body
+		.extensions
+		.typing
+		.rooms
+		.clone()
+		.unwrap_or_else(|| {
+			body.room_subscriptions
+				.keys()
+				.map(ToOwned::to_owned)
+				.collect()
+		});
+	let lists: Vec<_> = body
+		.extensions
+		.typing
+		.lists
+		.clone()
+		.unwrap_or_else(|| {
+			body.lists
+				.keys()
+				.map(ToOwned::to_owned)
+				.collect::<Vec<_>>()
+		});
+
+	if rooms.is_empty() && lists.is_empty() {
+		return Ok(sync_events::v5::response::Typing::default());
+	}
+
+	let mut typing_response = sync_events::v5::response::Typing::default();
+	for (room_id, (required_state_request, timeline_limit, roomsince)) in todo_rooms {
+		if services
+			.rooms
+			.typing
+			.last_typing_update(room_id)
+			.await? <= *roomsince
+		{
+			continue;
+		}
+
+		match services
+			.rooms
+			.typing
+			.typing_users_for_user(room_id, sender_user)
+			.await
+		{
+			| Ok(typing_users) => {
+				typing_response.rooms.insert(
+					room_id.to_owned(), // Already OwnedRoomId
+					Raw::new(&sync_events::v5::response::SyncTypingEvent {
+						content: TypingEventContent::new(typing_users),
+					})?,
+				);
+			},
+			| Err(e) => {
+				warn!(%room_id, "Failed to get typing events for room: {}", e);
+			},
+		}
+	}
+
+	Ok(typing_response)
 }
 
 async fn collect_receipts(_services: &Services) -> sync_events::v5::response::Receipts {
