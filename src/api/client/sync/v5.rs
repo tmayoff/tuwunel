@@ -12,15 +12,9 @@ use futures::{
 	pin_mut,
 };
 use ruma::{
-	DeviceId, OwnedEventId, OwnedRoomId, RoomId, UInt, UserId,
-	api::client::sync::sync_events::{self, DeviceLists, UnreadNotificationsCount},
-	directory::RoomTypeFilter,
-	events::{
-		AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType,
-		room::member::{MembershipState, RoomMemberEventContent},
-	},
-	serde::Raw,
-	uint,
+	api::client::sync::sync_events::{self, DeviceLists, UnreadNotificationsCount}, directory::RoomTypeFilter, events::{
+		room::member::{MembershipState, RoomMemberEventContent}, typing::TypingEventContent, AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType
+	}, serde::Raw, uint, DeviceId, OwnedEventId, OwnedRoomId, RoomId, UInt, UserId
 };
 use tuwunel_core::{
 	Err, Error, Result, at, error, extract_variant, is_equal_to,
