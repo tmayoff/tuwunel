@@ -12,9 +12,16 @@ use futures::{
 	pin_mut,
 };
 use ruma::{
-	api::client::sync::sync_events::{self, DeviceLists, UnreadNotificationsCount}, directory::RoomTypeFilter, events::{
-		room::member::{MembershipState, RoomMemberEventContent}, typing::TypingEventContent, AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType
-	}, serde::Raw, uint, DeviceId, OwnedEventId, OwnedRoomId, RoomId, UInt, UserId
+	DeviceId, OwnedEventId, OwnedRoomId, RoomId, UInt, UserId,
+	api::client::sync::sync_events::{self, DeviceLists, UnreadNotificationsCount},
+	directory::RoomTypeFilter,
+	events::{
+		AnyRawAccountDataEvent, AnySyncEphemeralRoomEvent, StateEventType, TimelineEventType,
+		room::member::{MembershipState, RoomMemberEventContent},
+		typing::TypingEventContent,
+	},
+	serde::Raw,
+	uint,
 };
 use tuwunel_core::{
 	Err, Error, Result, at, error, extract_variant, is_equal_to,
@@ -146,15 +153,14 @@ pub(crate) async fn sync_events_v5_route(
 	let (account_data, e2ee, to_device, receipts) =
 		try_join4(account_data, e2ee, to_device, receipts).await?;
 
-	// let typing = collect_typing(services, &sender_user, &body,
-	// &todo_rooms).map(Ok);
+	let typing = collect_typing_events(services, &sender_user, &body, &todo_rooms).await?;
 
 	let extensions = sync_events::v5::response::Extensions {
 		account_data,
 		e2ee,
 		to_device,
 		receipts,
-		typing: sync_events::v5::response::Typing::default(),
+		typing,
 	};
 
 	let mut response = sync_events::v5::Response {
