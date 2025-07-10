@@ -194,44 +194,14 @@ impl Service {
 	}
 
 	/// Returns a new typing EDU.
-	pub async fn typings_all(
-		&self,
-		room_id: &RoomId,
-		sender_user: &UserId,
-	) -> Result<SyncEphemeralRoomEvent<ruma::events::typing::TypingEventContent>> {
-		let room_typing_indicators = self.typing.read().await.get(room_id).cloned();
-
-		let Some(typing_indicators) = room_typing_indicators else {
-			return Ok(SyncEphemeralRoomEvent {
-				content: ruma::events::typing::TypingEventContent { user_ids: Vec::new() },
-			});
-		};
-
-		let user_ids: Vec<_> = typing_indicators
-			.into_keys()
-			.stream()
-			.filter_map(|typing_user_id| async move {
-				(!self
-					.services
-					.users
-					.user_is_ignored(&typing_user_id, sender_user)
-					.await)
-					.then_some(typing_user_id)
-			})
-			.collect()
-			.await;
-
-		Ok(SyncEphemeralRoomEvent {
-			content: ruma::events::typing::TypingEventContent { user_ids },
-		})
-	}
-
 	pub async fn typing_users_for_user(
 		&self,
 		room_id: &RoomId,
 		sender_user: &UserId,
 	) -> Result<Vec<OwnedUserId>> {
 		let room_typing_indicators = self.typing.read().await.get(room_id).cloned();
+
+		tuwunel_core::warn!("room indicators: {:?}", self.typing.read().await);
 
 		let Some(typing_indicators) = room_typing_indicators else {
 			return Ok(Vec::new());

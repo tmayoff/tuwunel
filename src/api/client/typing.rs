@@ -58,6 +58,7 @@ pub(crate) async fn create_typing_event_route(
 				.await?;
 		},
 		| _ => {
+			tuwunel_core::warn!("{:?} NOT TYPING", sender_user);
 			services
 				.rooms
 				.typing

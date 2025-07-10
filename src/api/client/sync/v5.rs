@@ -153,14 +153,12 @@ pub(crate) async fn sync_events_v5_route(
 	let (account_data, e2ee, to_device, receipts) =
 		try_join4(account_data, e2ee, to_device, receipts).await?;
 
-	let typing = collect_typing_events(services, &sender_user, &body, &todo_rooms).await?;
-
 	let extensions = sync_events::v5::response::Extensions {
 		account_data,
 		e2ee,
 		to_device,
 		receipts,
-		typing,
+		typing: sync_events::v5::response::Typing::default(),
 	};
 
 	let mut response = sync_events::v5::Response {
@@ -182,6 +180,9 @@ pub(crate) async fn sync_events_v5_route(
 		&mut response,
 	)
 	.await;
+
+	let typing = collect_typing_events(services, &sender_user, &body, &todo_rooms).await?;
+	response.extensions.typing = typing;
 
 	fetch_subscriptions(services, sync_info, &known_rooms, &mut todo_rooms).await;
 
@@ -341,7 +342,7 @@ where
 				.collect();
 
 			new_known_rooms.extend(new_rooms);
-			//new_known_rooms.extend(room_ids..cloned());
+			// new_known_rooms.extend(room_ids..cloned());
 			for room_id in room_ids {
 				let todo_room = todo_rooms.entry(room_id.to_owned()).or_insert((
 					BTreeSet::new(),
@@ -1000,16 +1001,26 @@ async fn collect_typing_events(
 		return Ok(sync_events::v5::response::Typing::default());
 	}
 
+	tuwunel_core::warn!(
+		"Checking typing rooms: {:?} lists: {:?} todo rooms: {:?}",
+		rooms,
+		lists,
+		todo_rooms
+	);
+
 	let mut typing_response = sync_events::v5::response::Typing::default();
+
 	for (room_id, (required_state_request, timeline_limit, roomsince)) in todo_rooms {
-		if services
-			.rooms
-			.typing
-			.last_typing_update(room_id)
-			.await? <= *roomsince
-		{
-			continue;
-		}
+		// if services
+		// 	.rooms
+		// 	.typing
+		// 	.last_typing_update(room_id)
+		// 	.await? <= *roomsince
+		// {
+		// 	continue;
+		// }
+
+		warn!("getting typing for room: {:?} user: {:?}", room_id, sender_user);
 
 		match services
 			.rooms
@@ -1030,6 +1041,8 @@ async fn collect_typing_events(
 			},
 		}
 	}
+
+	warn!("res: {:?}", typing_response);
 
 	Ok(typing_response)
 }
