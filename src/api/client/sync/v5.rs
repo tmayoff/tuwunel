@@ -174,15 +174,15 @@ pub(crate) async fn sync_events_v5_route(
 		sync_info,
 		all_invited_rooms.clone(),
 		all_joined_rooms.clone(),
-		&all_rooms,
+		all_rooms.clone(),
 		&mut todo_rooms,
 		&known_rooms,
 		&mut response,
 	)
 	.await;
 
-	let all_rooms: Vec<OwnedRoomId> = all_rooms.map(|r| r.to_owned()).collect();
-	let typing = collect_typing_events(services, &sender_user, &body, &all_rooms).await?;
+	let all_rooms: Vec<OwnedRoomId> = all_rooms.map(ToOwned::to_owned).collect();
+	let typing = collect_typing_events(services, sender_user, &body, &all_rooms).await?;
 
 	response.extensions.typing = typing;
 
@@ -294,7 +294,7 @@ async fn handle_lists<'a, Rooms, AllRooms>(
 	(sender_user, sender_device, globalsince, body): SyncInfo<'_>,
 	all_invited_rooms: Rooms,
 	all_joined_rooms: Rooms,
-	all_rooms: &AllRooms,
+	all_rooms: AllRooms,
 	todo_rooms: &'a mut TodoRooms,
 	known_rooms: &'a KnownRooms,
 	response: &'_ mut sync_events::v5::Response,
