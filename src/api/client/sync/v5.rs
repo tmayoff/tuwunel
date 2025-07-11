@@ -174,14 +174,16 @@ pub(crate) async fn sync_events_v5_route(
 		sync_info,
 		all_invited_rooms.clone(),
 		all_joined_rooms.clone(),
-		all_rooms,
+		&all_rooms,
 		&mut todo_rooms,
 		&known_rooms,
 		&mut response,
 	)
 	.await;
 
-	let typing = collect_typing_events(services, &sender_user, &body, &todo_rooms).await?;
+	let all_rooms: Vec<OwnedRoomId> = all_rooms.map(|r| r.to_owned()).collect();
+	let typing = collect_typing_events(services, &sender_user, &body, &all_rooms).await?;
+
 	response.extensions.typing = typing;
 
 	fetch_subscriptions(services, sync_info, &known_rooms, &mut todo_rooms).await;
@@ -292,7 +294,7 @@ async fn handle_lists<'a, Rooms, AllRooms>(
 	(sender_user, sender_device, globalsince, body): SyncInfo<'_>,
 	all_invited_rooms: Rooms,
 	all_joined_rooms: Rooms,
-	all_rooms: AllRooms,
+	all_rooms: &AllRooms,
 	todo_rooms: &'a mut TodoRooms,
 	known_rooms: &'a KnownRooms,
 	response: &'_ mut sync_events::v5::Response,
@@ -308,6 +310,7 @@ where
 			| Some(false) => all_joined_rooms.clone().collect(),
 		};
 
+		tuwunel_core::info!("active rooms: {:?}", active_rooms);
 		let active_rooms = match list.filters.as_ref().map(|f| &f.not_room_types) {
 			| None => active_rooms,
 			| Some(filter) if filter.is_empty() => active_rooms,
@@ -321,6 +324,7 @@ where
 				.collect()
 				.await,
 		};
+		tuwunel_core::info!("active rooms2: {:?}", active_rooms);
 
 		let mut new_known_rooms: BTreeSet<OwnedRoomId> = BTreeSet::new();
 
@@ -969,7 +973,7 @@ async fn collect_typing_events(
 	services: &Services,
 	sender_user: &UserId,
 	body: &sync_events::v5::Request,
-	todo_rooms: &TodoRooms,
+	all_rooms: &Vec<OwnedRoomId>,
 ) -> Result<sync_events::v5::response::Typing> {
 	if !body.extensions.typing.enabled.unwrap_or(false) {
 		return Ok(sync_events::v5::response::Typing::default());
@@ -1001,16 +1005,10 @@ async fn collect_typing_events(
 		return Ok(sync_events::v5::response::Typing::default());
 	}
 
-	tuwunel_core::warn!(
-		"Checking typing rooms: {:?} lists: {:?} todo rooms: {:?}",
-		rooms,
-		lists,
-		todo_rooms
-	);
-
 	let mut typing_response = sync_events::v5::response::Typing::default();
 
-	for (room_id, (required_state_request, timeline_limit, roomsince)) in todo_rooms {
+	for room_id in all_rooms {
+		tuwunel_core::info!("checking room: {}", room_id);
 		// if services
 		// 	.rooms
 		// 	.typing
@@ -1019,8 +1017,6 @@ async fn collect_typing_events(
 		// {
 		// 	continue;
 		// }
-
-		warn!("getting typing for room: {:?} user: {:?}", room_id, sender_user);
 
 		match services
 			.rooms
@@ -1042,7 +1038,7 @@ async fn collect_typing_events(
 		}
 	}
 
-	warn!("res: {:?}", typing_response);
+	tuwunel_core::info!("{:?}", typing_response);
 
 	Ok(typing_response)
 }
