@@ -1005,6 +1005,8 @@ async fn collect_typing_events(
 		return Ok(sync_events::v5::response::Typing::default());
 	}
 
+	// TODO filter rooms with lists
+
 	let mut typing_response = sync_events::v5::response::Typing::default();
 
 	for room_id in all_rooms {
@@ -1027,7 +1029,7 @@ async fn collect_typing_events(
 			| Ok(typing_users) => {
 				typing_response.rooms.insert(
 					room_id.to_owned(), // Already OwnedRoomId
-					Raw::new(&sync_events::v5::response::SyncTypingEvent {
+					Raw::new(&ruma::events::typing::SyncTypingEvent {
 						content: TypingEventContent::new(typing_users),
 					})?,
 				);
