@@ -183,7 +183,6 @@ pub(crate) async fn sync_events_v5_route(
 
 	let all_rooms: Vec<OwnedRoomId> = all_rooms.map(ToOwned::to_owned).collect();
 	let typing = collect_typing_events(services, sender_user, &body, &all_rooms).await?;
-
 	response.extensions.typing = typing;
 
 	fetch_subscriptions(services, sync_info, &known_rooms, &mut todo_rooms).await;
@@ -310,7 +309,6 @@ where
 			| Some(false) => all_joined_rooms.clone().collect(),
 		};
 
-		tuwunel_core::info!("active rooms: {:?}", active_rooms);
 		let active_rooms = match list.filters.as_ref().map(|f| &f.not_room_types) {
 			| None => active_rooms,
 			| Some(filter) if filter.is_empty() => active_rooms,
@@ -324,7 +322,6 @@ where
 				.collect()
 				.await,
 		};
-		tuwunel_core::info!("active rooms2: {:?}", active_rooms);
 
 		let mut new_known_rooms: BTreeSet<OwnedRoomId> = BTreeSet::new();
 

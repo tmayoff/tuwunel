@@ -201,8 +201,6 @@ impl Service {
 	) -> Result<Vec<OwnedUserId>> {
 		let room_typing_indicators = self.typing.read().await.get(room_id).cloned();
 
-		tuwunel_core::warn!("room indicators: {:?}", self.typing.read().await);
-
 		let Some(typing_indicators) = room_typing_indicators else {
 			return Ok(Vec::new());
 		};
