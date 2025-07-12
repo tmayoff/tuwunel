@@ -1007,16 +1007,6 @@ async fn collect_typing_events(
 	let mut typing_response = sync_events::v5::response::Typing::default();
 
 	for room_id in all_rooms {
-		tuwunel_core::info!("checking room: {}", room_id);
-		// if services
-		// 	.rooms
-		// 	.typing
-		// 	.last_typing_update(room_id)
-		// 	.await? <= *roomsince
-		// {
-		// 	continue;
-		// }
-
 		match services
 			.rooms
 			.typing
@@ -1036,8 +1026,6 @@ async fn collect_typing_events(
 			},
 		}
 	}
-
-	tuwunel_core::info!("{:?}", typing_response);
 
 	Ok(typing_response)
 }
