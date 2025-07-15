@@ -74,7 +74,7 @@ pub(crate) async fn sync_events_v5_route(
 	// Setup watchers, so if there's no response, we can wait for them
 	let watcher = services.sync.watch(sender_user, sender_device);
 
-	let next_batch = services.globals.next_count()?;
+	let next_batch = services.globals.current_count()?;
 
 	let conn_id = body.conn_id.clone();
 
@@ -324,6 +324,20 @@ where
 				.await,
 		};
 
+		let active_rooms = match list.filters.as_ref().map(|f| &f.room_types) {
+			| None => active_rooms,
+			| Some(filter) if filter.is_empty() => active_rooms,
+			| Some(value) =>
+				filter_rooms(
+					services,
+					value,
+					&false,
+					active_rooms.iter().stream().map(Deref::deref),
+				)
+				.collect()
+				.await,
+		};
+
 		let mut new_known_rooms: BTreeSet<OwnedRoomId> = BTreeSet::new();
 
 		let ranges = list.ranges.clone();
@@ -555,6 +569,7 @@ where
 			.iter()
 			.stream()
 			.filter_map(|state| async move {
+				tuwunel_core::info!("{:?}", state);
 				services
 					.rooms
 					.state_accessor
@@ -565,6 +580,8 @@ where
 			})
 			.collect()
 			.await;
+
+		tuwunel_core::info!("{:?}", required_state);
 
 		let room_name = services
 			.rooms
