@@ -211,6 +211,7 @@ pub(crate) async fn sync_events_v5_route(
 		.to_device
 		.clone()
 		.is_none_or(|to| to.events.is_empty())
+		&& response.extensions.typing.is_empty()
 	{
 		// Hang a few seconds so requests are not spammed
 		// Stop hanging if new info arrives
@@ -975,34 +976,6 @@ async fn collect_typing_events(
 	if !body.extensions.typing.enabled.unwrap_or(false) {
 		return Ok(sync_events::v5::response::Typing::default());
 	}
-	let rooms: Vec<_> = body
-		.extensions
-		.typing
-		.rooms
-		.clone()
-		.unwrap_or_else(|| {
-			body.room_subscriptions
-				.keys()
-				.map(ToOwned::to_owned)
-				.collect()
-		});
-	let lists: Vec<_> = body
-		.extensions
-		.typing
-		.lists
-		.clone()
-		.unwrap_or_else(|| {
-			body.lists
-				.keys()
-				.map(ToOwned::to_owned)
-				.collect::<Vec<_>>()
-		});
-
-	if rooms.is_empty() && lists.is_empty() {
-		return Ok(sync_events::v5::response::Typing::default());
-	}
-
-	// TODO filter rooms with lists
 
 	let mut typing_response = sync_events::v5::response::Typing::default();
 
@@ -1014,12 +987,14 @@ async fn collect_typing_events(
 			.await
 		{
 			| Ok(typing_users) => {
-				typing_response.rooms.insert(
-					room_id.to_owned(), // Already OwnedRoomId
-					Raw::new(&ruma::events::typing::SyncTypingEvent {
-						content: TypingEventContent::new(typing_users),
-					})?,
-				);
+				if !typing_users.is_empty() {
+					typing_response.rooms.insert(
+						room_id.to_owned(), // Already OwnedRoomId
+						Raw::new(&ruma::events::typing::SyncTypingEvent {
+							content: TypingEventContent::new(typing_users),
+						})?,
+					);
+				}
 			},
 			| Err(e) => {
 				warn!(%room_id, "Failed to get typing events for room: {}", e);
